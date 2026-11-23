@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#13212F">
+<title>SafeNode MVP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: calm, clinical, trustworthy — a tool used minutes before a hard conversation
+   IDEA: a quiet instrument panel; one large voice ring is the centre of every live screen
+   PICTURE: the ring breathes with the voice, turns orange on a long pause
+   COLOUR and TYPE: ink navy, warm paper, teal action, orange for the pause; Space Grotesk + Inter
+   LAYOUT: one column, max 560px, big 52px buttons, bottom-safe on phones */
+:root{color-scheme:light dark;--bg:light-dark(#F5F3EE,#0E1822);--card:light-dark(#FCFBF8,#172636);--ink:light-dark(#13212F,#EEF2F1);--mut:light-dark(#5A6676,#9FB0BD);--line:light-dark(#DCE3E1,#26394B);--teal:light-dark(#0E7468,#5FC4B6);--tealbg:light-dark(#E2EFEC,#173A3A);--org:light-dark(#B4471F,#F08A5D);--orgbg:light-dark(#F7DED3,#3A2620)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:'Space Grotesk',Inter,sans-serif;line-height:1.1;margin:0;text-wrap:balance}
+h1{font-size:32px}h2{font-size:26px}h3{font-size:19px}
+p{margin:0}
+.app{max-width:560px;margin:0 auto;padding:16px 16px calc(32px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 0 16px}
+.brand{display:flex;align-items:center;gap:10px;font:700 20px 'Space Grotesk',sans-serif}
+.logo{width:28px;height:28px;border-radius:50%;background:var(--teal);display:grid;place-items:center}
+.logo i{width:10px;height:10px;border-radius:50%;background:var(--bg)}
+.chip{font-size:13px;color:var(--mut);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.view{display:none;flex-direction:column;gap:16px}.view.on{display:flex}
+.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.hero{background:#0E7468;color:#fff;border:0}.hero .mut{color:#d6eeea}
+.mut{color:var(--mut)}.small{font-size:14px}
+.row{display:flex;gap:12px;align-items:center}.row>*{flex:1}
+.grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+button{font:600 17px Inter,sans-serif;min-height:52px;border-radius:14px;border:0;padding:12px 18px;cursor:pointer;background:var(--teal);color:#fff;width:100%}
+button.sec{background:transparent;color:var(--ink);border:1.5px solid var(--line)}
+button.ghost{background:transparent;color:var(--teal);min-height:44px;width:auto;padding:8px 4px}
+button.warn{background:var(--org)}
+.hero button{background:#fff;color:#0E7468}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--org);outline-offset:2px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;text-align:left;color:var(--ink);display:flex;flex-direction:column;gap:4px;min-height:96px;font-weight:400}
+.tile b{font:700 17px 'Space Grotesk',sans-serif}
+label{display:flex;flex-direction:column;gap:6px;font-size:15px}
+input[type=text],select,textarea{font:16px Inter,sans-serif;padding:12px;border-radius:12px;border:1.5px solid var(--line);background:var(--bg);color:var(--ink)}
+input[type=range]{width:100%;accent-color:var(--teal);height:32px}
+.check{flex-direction:row;align-items:flex-start;gap:10px}.check input{width:22px;height:22px;margin-top:2px;accent-color:var(--teal);flex:none}
+.ringwrap{display:grid;place-items:center;padding:12px 0}
+.ring{width:min(64vw,250px);aspect-ratio:1;border-radius:50%;background:var(--tealbg);display:grid;place-items:center;position:relative;transition:background .2s}
+.ring .core{width:46%;aspect-ratio:1;border-radius:50%;background:var(--teal);transform:scale(.8);transition:transform 60ms linear,background .2s}
+.ring.pause{background:var(--orgbg)}.ring.pause .core{background:var(--org)}
+.ring .lbl{position:absolute;bottom:-34px;left:0;right:0;text-align:center;font:600 16px Inter,sans-serif}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:28px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}
+.stat b{display:block;font:700 22px 'Space Grotesk',sans-serif;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--mut)}
+.meter{height:12px;border-radius:6px;background:var(--line);overflow:hidden;position:relative}
+.meter i{position:absolute;inset:0 auto 0 0;background:var(--teal);width:0}
+.meter u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--org)}
+.passage{font:19px/1.6 Inter,sans-serif;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+.steps{display:flex;gap:6px}.steps i{flex:1;height:6px;border-radius:3px;background:var(--line)}.steps i.done{background:var(--teal)}.steps i.now{background:var(--org)}
+.scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.scale button{min-height:48px;background:var(--card);color:var(--ink);border:1.5px solid var(--line);font-size:18px;padding:0}
+.scale button.sel{background:var(--teal);color:#fff;border-color:var(--teal)}
+.scale11{grid-template-columns:repeat(6,minmax(0,1fr))}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.best td{background:var(--tealbg)}
+.pill{display:inline-block;font-size:13px;padding:3px 10px;border-radius:999px;background:var(--tealbg);color:var(--teal);font-weight:600}
+.pill.o{background:var(--orgbg);color:var(--org)}
+.note{font-size:14px;color:var(--mut);border-left:3px solid var(--line);padding-left:10px}
+.list>div{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+.err{background:var(--orgbg);color:var(--org);border-radius:12px;padding:12px;font-size:15px;display:none}.err.on{display:block}
+footer{font-size:13px;color:var(--mut);text-align:center;padding-top:24px}
+@media(prefers-reduced-motion:reduce){.ring .core{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="brand"><span class="logo"><i></i></span>SafeNode</div><span class="chip" id="pidChip">Pilot</span></header>
+<div class="err" id="err" role="alert"></div>
+
+<!-- Онбординг -->
+<section class="view" id="v-welcome">
+  <h1>Help in the second your speech breaks</h1>
+  <p class="mut">This is the SafeNode pilot app. It plays a personal sound in your earbuds while you speak and taps a rhythm on a long pause.</p>
+  <div class="card">
+    <label>Participant ID<input type="text" id="pidIn" placeholder="e.g. P07" autocomplete="off"></label>
+    <label>Reading texts language<select id="langIn"><option value="en">English</option><option value="ru">Русский</option></select></label>
+    <label class="check"><input type="checkbox" class="cons"> I understand this is a wellness research prototype, not a medical device or treatment.</label>
+    <label class="check"><input type="checkbox" class="cons"> My recordings and results stay on this phone. They leave it only when I press Export.</label>
+    <label class="check"><input type="checkbox" class="cons"> I can stop at any time and delete my data in Settings.</label>
+    <button id="startPilot" disabled>Continue</button>
+  </div>
+</section>
+
+<!-- Главный экран -->
+<section class="view" id="v-home">
+  <div class="card hero">
+    <p class="mut small">Your stimulus</p>
+    <h2 id="homeStim">Not chosen yet</h2>
+    <p class="mut small" id="homeHint">Run “Find my stimulus” first (about 10 minutes).</p>
+    <button id="goSession">Start a session</button>
+  </div>
+  <div class="grid2">
+    <button class="tile" id="goTest"><b>Find my stimulus</b><span class="mut small" id="testStatus">5 short readings</span></button>
+    <button class="tile" id="goMic"><b>Mic check</b><span class="mut small" id="micStatus">Not calibrated</span></button>
+    <button class="tile" id="goHistory"><b>History</b><span class="mut small" id="histStatus">0 sessions</span></button>
+    <button class="tile" id="goSettings"><b>Settings</b><span class="mut small">Volume, pauses, data</span></button>
+  </div>
+  <p class="note">Use headphones. For “delayed voice” and “shifted voice”, wired earbuds work best: Bluetooth adds its own delay.</p>
+</section>
+
+<!-- Калибровка микрофона -->
+<section class="view" id="v-mic">
+  <h2>Mic check</h2>
+  <p class="mut">We measure your room and your voice, so the app knows when you are speaking.</p>
+  <div class="card">
+    <div class="meter"><i id="micBar"></i><u id="micThr"></u></div>
+    <p id="micMsg" class="small mut">Press start, then follow the prompts.</p>
+    <button id="micStart">Start (6 seconds)</button>
+  </div>
+  <button class="sec back">Back</button>
+</section>
+
+<!-- Подбор стимула -->
+<section class="view" id="v-test">
+  <div class="steps" id="testSteps"></div>
+  <div id="testBody" class="view on" style="gap:16px"></div>
+</section>
+
+<!-- Сессия: до -->
+<section class="view" id="v-pre">
+  <h2>Before you speak</h2>
+  <div class="card">
+    <label>What is it?<select id="sitIn"><option>Presentation</option><option>Interview</option><option>Phone call</option><option>Exam</option><option>Meeting</option><option>Conversation</option><option>Practice</option></select></label>
+    <p>How anxious are you now? <span class="mut small">0 = calm, 10 = very anxious</span></p>
+    <div class="scale scale11" id="anxBefore"></div>
+    <label class="check"><input type="checkbox" id="dndIn"> I turned on Do Not Disturb (the app cannot do it for you)</label>
+    <label class="check"><input type="checkbox" id="hpIn"> I am wearing headphones</label>
+    <button id="sessGo" disabled>Start listening</button>
+  </div>
+  <button class="sec back">Back</button>
+</section>
+
+<!-- Сессия: живая -->
+<section class="view" id="v-live">
+  <div class="row" style="justify-content:space-between"><span class="pill" id="liveStim">—</span><span class="pill o" id="liveTime">0:00</span></div>
+  <div class="ringwrap"><div class="ring" id="ring"><div class="core" id="core"></div><div class="lbl" id="ringLbl">Listening</div></div></div>
+  <div class="stats">
+    <div class="stat"><b id="sSpeak">0:00</b><span>speaking</span></div>
+    <div class="stat"><b id="sPause">0</b><span>long pauses</span></div>
+    <div class="stat"><b id="sCue">0</b><span>rhythm cues</span></div>
+  </div>
+  <p class="note" id="liveNote">Sound plays only while you speak. On a long pause your phone taps a rhythm.</p>
+  <button class="warn" id="sessStop">End session</button>
+</section>
+
+<!-- Сессия: после -->
+<section class="view" id="v-post">
+  <h2>How did it go?</h2>
+  <div class="card" id="postSum"></div>
+  <div class="card">
+    <p>How smooth did your speech feel? <span class="mut small">1 = very hard, 5 = very smooth</span></p>
+    <div class="scale" id="flPost"></div>
+    <p>How anxious are you now?</p>
+    <div class="scale scale11" id="anxAfter"></div>
+    <label>Note (optional)<textarea id="noteIn" rows="2" placeholder="Where, with whom, what helped"></textarea></label>
+    <button id="postSave">Save</button>
+  </div>
+</section>
+
+<!-- История -->
+<section class="view" id="v-history">
+  <h2>History</h2>
+  <div class="card"><div class="list" id="histList"></div></div>
+  <div class="card">
+    <h3>Export for the pilot team</h3>
+    <p class="small mut">CSV with all sessions and test results, and the audio recordings for blind counting of stuttered syllables.</p>
+    <button id="expCsv">Download results (.csv)</button>
+    <button class="sec" id="expRec">Download recordings (.zip)</button>
+    <p class="small mut" id="recCount"></p>
+  </div>
+  <button class="sec back">Back</button>
+</section>
+
+<!-- Настройки -->
+<section class="view" id="v-settings">
+  <h2>Settings</h2>
+  <div class="card">
+    <label>Participant ID<input type="text" id="setPid"></label>
+    <label>Reading texts language<select id="setLang"><option value="en">English</option><option value="ru">Русский</option></select></label>
+    <label>Maximum volume: <b id="volV"></b><input type="range" id="setVol" min="10" max="80" step="5"></label>
+    <label>Long pause after: <b id="pauseV"></b><input type="range" id="setPause" min="400" max="2000" step="100"></label>
+    <label class="check"><input type="checkbox" id="setCue"> Rhythm cue on long pauses (phone vibration, Android)</label>
+    <label class="check"><input type="checkbox" id="setRot"> Rotate stimulus variants so the effect doesn’t fade</label>
+    <label class="check"><input type="checkbox" id="setRecS"> Also record audio in real sessions</label>
+    <label>Stimulus<select id="setStim"></select></label>
+  </div>
+  <button class="sec" id="wipe">Delete all my data</button>
+  <button class="sec back">Back</button>
+</section>
+
+<footer>SafeNode pilot · wellness research prototype, not a medical device</footer>
+</div>
+
+<script>
+{
+// ---------- Данные ----------
+const STIM = {
+  none:  {name:'No stimulus', short:'None', variants:[null]},
+  noise: {name:'Masking noise', short:'Noise', variants:['pink','brown','white'], label:v=>v+' noise'},
+  daf:   {name:'Delayed voice', short:'Delay', variants:[75,50,100], label:v=>v+' ms delay'},
+  pitch: {name:'Shifted voice', short:'Pitch', variants:[-4,4,-3], label:v=>(v>0?'+':'−')+Math.abs(v)+' semitones'},
+  rhythm:{name:'Rhythm cue only', short:'Rhythm', variants:[null]}
+};
+const TEST_ORDER = ['none','noise','daf','pitch','rhythm'];
+const TEXTS = {
+ en:["Every morning the market by the river wakes up early. Bakers carry warm bread to their stalls, and farmers bring baskets of apples, carrots and fresh herbs. By eight o’clock the narrow street is full of voices. People bargain, laugh and greet old friends. A small boy sells newspapers near the bridge, and a woman with a bicycle buys flowers for her kitchen table.",
+  "Mountains have always tested the people who climb them. Before a long hike, it is wise to check the weather, pack enough water and tell someone where you are going. The first hour is usually the hardest, because the body has not yet found its rhythm. Later the breathing becomes steady and the path feels lighter. At the top the wind is cold, but the view makes every step worth it.",
+  "Our office moved to a new building last spring. The rooms are brighter, the windows are larger, and there is a quiet corner for phone calls. On Mondays the whole team meets to plan the week. Each person describes one goal, one problem and one idea. The meeting rarely lasts more than thirty minutes, and afterwards everyone knows what matters most.",
+  "Cooking a good soup takes patience more than skill. Start with onions and carrots in a little oil, and let them soften slowly. Add potatoes, a bay leaf and enough water to cover everything. Bring the pot to a gentle boil, then lower the heat and wait. After forty minutes, taste the soup, add salt and pepper, and serve it with warm bread.",
+  "The city library opens at nine and closes at eight in the evening. Students study in the reading hall, while older visitors prefer the newspapers near the window. On Saturdays there are free lessons for children, and once a month a local writer gives a public talk. Many people say the library is the calmest place in town."],
+ ru:["Каждое утро рынок у реки просыпается рано. Пекари несут к прилавкам тёплый хлеб, а фермеры привозят корзины яблок, моркови и свежей зелени. К восьми часам узкая улица наполняется голосами. Люди торгуются, смеются и здороваются со старыми знакомыми. Мальчик продаёт газеты у моста, а женщина с велосипедом покупает цветы для кухонного стола.",
+  "Горы всегда проверяют тех, кто на них поднимается. Перед долгим походом стоит узнать прогноз погоды, взять достаточно воды и сказать кому-нибудь, куда вы идёте. Первый час обычно самый трудный, потому что тело ещё не нашло свой ритм. Потом дыхание выравнивается, и тропа кажется легче. Наверху дует холодный ветер, но вид оправдывает каждый шаг.",
+  "Прошлой весной наш офис переехал в новое здание. Комнаты стали светлее, окна больше, и появился тихий угол для телефонных звонков. По понедельникам вся команда собирается, чтобы спланировать неделю. Каждый называет одну цель, одну проблему и одну идею. Встреча редко длится больше получаса, и после неё все знают, что важнее всего.",
+  "Хороший суп требует скорее терпения, чем мастерства. Начните с лука и моркови на небольшом количестве масла и дайте им медленно размягчиться. Добавьте картофель, лавровый лист и столько воды, чтобы она всё покрыла. Доведите до слабого кипения, убавьте огонь и подождите. Через сорок минут попробуйте суп, посолите и подайте с тёплым хлебом.",
+  "Городская библиотека открывается в девять утра и закрывается в восемь вечера. Студенты занимаются в читальном зале, а пожилые посетители предпочитают газеты у окна. По субботам проходят бесплатные занятия для детей, а раз в месяц местный писатель выступает с открытой лекцией. Многие говорят, что библиотека — самое спокойное место в городе."]
+};
+const DEF = {pid:'',lang:'en',consent:false,vol:50,pauseMs:700,cue:true,rot:true,recSessions:false,stim:null,floor:-60,thr:-45,calibrated:false,test:null,logs:[],varCount:{}};
+let S;
+try{S=Object.assign({},DEF,JSON.parse(localStorage.getItem('safenode')||'{}'))}catch(e){S={...DEF}}
+const save=()=>{try{localStorage.setItem('safenode',JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id);
+const fmt=s=>{s=Math.round(s);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+const canVibrate='vibrate' in navigator;
+const showErr=m=>{const e=$('err');e.textContent=m;e.classList.toggle('on',!!m)};
+
+// ---------- Хранилище записей (IndexedDB) ----------
+let dbp=null;
+const db=()=>dbp||(dbp=new Promise((res,rej)=>{try{const r=indexedDB.open('safenode',1);r.onupgradeneeded=()=>r.result.createObjectStore('rec',{keyPath:'id'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}}));
+const recPut=async o=>{try{const d=await db();await new Promise((r,j)=>{const t=d.transaction('rec','readwrite');t.objectStore('rec').put(o);t.oncomplete=r;t.onerror=()=>j(t.error)})}catch(e){showErr('Could not save the recording on this phone.')}};
+const recAll=async()=>{try{const d=await db();return await new Promise((r,j)=>{const q=d.transaction('rec').objectStore('rec').getAll();q.onsuccess=()=>r(q.result);q.onerror=()=>j(q.error)})}catch(e){return[]}};
+const recClear=async()=>{try{const d=await db();d.transaction('rec','readwrite').objectStore('rec').clear()}catch(e){}};
+
+// ---------- Аудио-движок ----------
+const E={};
+function noiseBuf(ctx,color){
+  const n=ctx.sampleRate*2,b=ctx.createBuffer(1,n,ctx.sampleRate),d=b.getChannelData(0);
+  let b0=0,b1=0,b2=0,last=0;
+  for(let i=0;i<n;i++){const w=Math.random()*2-1;
+    if(color==='white')d[i]=w*0.5;
+    else if(color==='pink'){b0=0.99765*b0+w*0.099046;b1=0.963*b1+w*0.2965164;b2=0.57*b2+w*1.0526913;d[i]=(b0+b1+b2+w*0.1848)*0.11}
+    else{last=(last+0.02*w)/1.02;d[i]=last*3.5}}
+  return b;
+}
+function pitchShifter(ctx,semi){
+  // сдвиг высоты через линию задержки с двумя отводами (окно Ханна)
+  const node=ctx.createScriptProcessor(1024,1,1),N=2048,L=8192,buf=new Float32Array(L),r=Math.pow(2,semi/12);
+  let w=0,ph=0;
+  const rd=d=>{let x=w-d;while(x<0)x+=L;const i=Math.floor(x),f=x-i;return buf[i%L]*(1-f)+buf[(i+1)%L]*f};
+  node.onaudioprocess=e=>{const a=e.inputBuffer.getChannelData(0),o=e.outputBuffer.getChannelData(0);
+    for(let i=0;i<a.length;i++){buf[w]=a[i];ph+=(1-r)/N;if(ph>=1)ph-=1;if(ph<0)ph+=1;
+      const p2=(ph+0.5)%1;o[i]=(0.5-0.5*Math.cos(2*Math.PI*ph))*rd(ph*N)+(0.5-0.5*Math.cos(2*Math.PI*p2))*rd(p2*N);w=(w+1)%L}};
+  return node;
+}
+async function startAudio({stim=null,variant=null,record=false,onTick=null,cue=false}={}){
+  showErr('');
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error('This browser cannot use the microphone. Open the app over https in Chrome or Safari.');
+  E.stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  const AC=window.AudioContext||window.webkitAudioContext;E.ctx=new AC({latencyHint:'interactive'});await E.ctx.resume();
+  const ctx=E.ctx,src=ctx.createMediaStreamSource(E.stream);
+  E.an=ctx.createAnalyser();E.an.fftSize=1024;src.connect(E.an);
+  E.master=ctx.createGain();E.master.gain.value=Math.min(S.vol,80)/100;E.master.connect(ctx.destination);
+  E.gate=ctx.createGain();E.gate.gain.value=0;E.gate.connect(E.master);
+  E.nodes=[];
+  if(stim==='noise'){const s=ctx.createBufferSource();s.buffer=noiseBuf(ctx,variant);s.loop=true;const g=ctx.createGain();g.gain.value=0.35;s.connect(g).connect(E.gate);s.start();E.nodes.push(s)}
+  if(stim==='daf'){const d=ctx.createDelay(0.5);d.delayTime.value=variant/1000;src.connect(d).connect(E.gate);E.nodes.push(d)}
+  if(stim==='pitch'){const p=pitchShifter(ctx,variant);src.connect(p).connect(E.gate);E.nodes.push(p)}
+  // в тесте каждый стимул отдельно; в сессии ритм добавляется по настройке
+  E.cueOn=stim==='rhythm'||!!cue;
+  E.m={t0:performance.now(),speakMs:0,utt:0,pauses:0,cues:0};
+  E.vad={speaking:false,lastVoice:-1e9,inUtt:false,silence:0,cued:false,lastCue:-1e9,level:-90};
+  if(record&&window.MediaRecorder){E.chunks=[];const mt=['audio/webm;codecs=opus','audio/mp4','audio/webm'].find(t=>MediaRecorder.isTypeSupported?.(t))||'';
+    E.rec=new MediaRecorder(E.stream,mt?{mimeType:mt}:undefined);E.rec.ondataavailable=e=>e.data.size&&E.chunks.push(e.data);E.rec.start(1000)}
+  const data=new Float32Array(E.an.fftSize);
+  E.timer=setInterval(()=>{E.an.getFloatTimeDomainData(data);let s=0;for(const v of data)s+=v*v;
+    const db=20*Math.log10(Math.sqrt(s/data.length)+1e-9);E.vad.level=db;vadStep(db,20);onTick&&onTick(db)},20);
+}
+function vadStep(db,dt){
+  const v=E.vad,m=E.m,now=performance.now(),voice=db>S.thr;
+  if(voice)v.lastVoice=now;
+  const speaking=now-v.lastVoice<150;
+  if(speaking){m.speakMs+=dt;if(!v.inUtt){v.inUtt=true;m.utt++}
+    else if(v.silence>=S.pauseMs)m.pauses++;
+    v.silence=0;v.cued=false}
+  else if(v.inUtt){v.silence+=dt;
+    if(E.cueOn&&!v.cued&&v.silence>=S.pauseMs&&now-v.lastCue>3000){v.cued=true;v.lastCue=now;m.cues++;if(canVibrate)try{navigator.vibrate([70,330,70,330,70])}catch(e){}}
+    if(v.silence>=3000){v.inUtt=false;v.silence=0}}
+  const open=now-v.lastVoice<300,t=E.ctx.currentTime;
+  E.gate.gain.setTargetAtTime(open?1:0,t,open?0.01:0.06);
+  v.speaking=speaking;
+}
+async function stopAudio(){
+  clearInterval(E.timer);let blob=null;
+  if(E.rec&&E.rec.state!=='inactive'){blob=await new Promise(r=>{E.rec.onstop=()=>r(new Blob(E.chunks,{type:E.rec.mimeType||'audio/webm'}));E.rec.stop()})}
+  E.rec=null;try{E.nodes.forEach(n=>{try{n.stop?.()}catch(e){};n.disconnect()})}catch(e){}
+  E.stream?.getTracks().forEach(t=>t.stop());try{await E.ctx?.close()}catch(e){}
+  const m=E.m,dur=(performance.now()-m.t0)/1000,sp=m.speakMs/1000;
+  return{blob,dur,speak:sp,utt:m.utt,pauses:m.pauses,cues:m.cues,ppm:sp>5?+(m.pauses/(sp/60)).toFixed(1):null};
+}
+const extOf=b=>b&&b.type.includes('mp4')?'m4a':'webm';
+
+// ---------- Навигация ----------
+let cur='home';
+function go(v){if(!S.consent&&v!=='welcome')v='welcome';cur=v;document.querySelectorAll('.app>.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));window.scrollTo(0,0);render[v]&&render[v]()}
+document.querySelectorAll('.back').forEach(b=>b.onclick=()=>go('home'));
+const varOf=st=>{const vs=STIM[st].variants;return S.rot?vs[(S.varCount[st]||0)%vs.length]:vs[0]};
+const stimLabel=(st,v)=>STIM[st].name+(v!=null&&STIM[st].label?' · '+STIM[st].label(v):'');
+const scale=(el,n,from,cb)=>{el.innerHTML=Array.from({length:n},(_,i)=>`<button type="button" data-v="${i+from}">${i+from}</button>`).join('');el.dataset.val='';
+  el.onclick=e=>{const b=e.target.closest('button');if(!b)return;el.querySelectorAll('button').forEach(x=>x.classList.toggle('sel',x===b));el.dataset.val=b.dataset.v;cb&&cb()}};
+
+const render={
+ welcome(){$('pidIn').value=S.pid;$('langIn').value=S.lang},
+ home(){
+  $('pidChip').textContent=S.pid?('Participant '+S.pid):'Pilot';
+  $('homeStim').textContent=S.stim?STIM[S.stim].name:'Not chosen yet';
+  $('homeHint').textContent=S.stim?(S.rot&&STIM[S.stim].label?'Next variant: '+STIM[S.stim].label(varOf(S.stim)):'Plays only while you speak'):'Run “Find my stimulus” first (about 10 minutes).';
+  $('testStatus').textContent=S.test?.done?'Done · tap to repeat':'5 short readings';
+  $('micStatus').textContent=S.calibrated?'Calibrated':'Not calibrated';
+  const n=S.logs.filter(l=>l.type==='session').length;$('histStatus').textContent=n+' session'+(n===1?'':'s');
+ },
+ mic(){$('micMsg').textContent='Press start, then follow the prompts.';$('micBar').style.width='0';$('micThr').style.left=lvl(S.thr)+'%'},
+ history:renderHistory,
+ settings(){
+  $('setPid').value=S.pid;$('setLang').value=S.lang;$('setVol').value=S.vol;$('volV').textContent=S.vol+'%';
+  $('setPause').value=S.pauseMs;$('pauseV').textContent=(S.pauseMs/1000).toFixed(1)+' s';
+  $('setCue').checked=S.cue;$('setRot').checked=S.rot;$('setRecS').checked=S.recSessions;
+  $('setStim').innerHTML=Object.keys(STIM).filter(k=>k!=='none').map(k=>`<option value="${k}" ${S.stim===k?'selected':''}>${STIM[k].name}</option>`).join('');
+  if(!S.stim)$('setStim').insertAdjacentHTML('afterbegin','<option value="" selected>Not chosen</option>');
+ },
+ pre(){scale($('anxBefore'),11,0,preReady);$('dndIn').checked=false;$('hpIn').checked=false;preReady()},
+ post(){scale($('flPost'),5,1);scale($('anxAfter'),11,0);$('noteIn').value=''}
+};
+const lvl=db=>Math.max(0,Math.min(100,(db+80)/70*100));
+
+// ---------- Онбординг ----------
+document.querySelectorAll('.cons').forEach(c=>c.onchange=()=>$('startPilot').disabled=![...document.querySelectorAll('.cons')].every(x=>x.checked)||!$('pidIn').value.trim());
+$('pidIn').oninput=()=>document.querySelector('.cons').onchange();
+$('startPilot').onclick=()=>{S.pid=$('pidIn').value.trim();S.lang=$('langIn').value;S.consent=true;save();go(S.calibrated?'home':'mic')};
+$('goTest').onclick=()=>S.calibrated?startTest():(go('mic'),$('micMsg').textContent='Please calibrate the microphone first.');
+$('goMic').onclick=()=>go('mic');$('goHistory').onclick=()=>go('history');$('goSettings').onclick=()=>go('settings');
+$('goSession').onclick=()=>{if(!S.calibrated)return go('mic');if(!S.stim)return startTest();go('pre')};
+
+// ---------- Калибровка ----------
+$('micStart').onclick=async()=>{
+  const btn=$('micStart');btn.disabled=true;const quiet=[],loud=[];let phase='quiet';
+  try{
+    await startAudio({onTick:db=>{$('micBar').style.width=lvl(db)+'%';(phase==='quiet'?quiet:loud).push(db)}});
+    $('micMsg').textContent='Stay quiet for 3 seconds…';
+    await new Promise(r=>setTimeout(r,3000));phase='loud';
+    $('micMsg').textContent='Now count aloud: one, two, three, four, five…';
+    await new Promise(r=>setTimeout(r,3000));await stopAudio();
+    const q=quiet.sort((a,b)=>a-b)[Math.floor(quiet.length/2)],l=loud.sort((a,b)=>a-b)[Math.floor(loud.length*0.9)];
+    if(!(l-q>8)){$('micMsg').textContent='We could not hear your voice clearly. Move closer to the mic or a quieter place and try again.';btn.disabled=false;return}
+    S.floor=q;S.thr=q+Math.max(6,(l-q)*0.4);S.calibrated=true;save();
+    $('micThr').style.left=lvl(S.thr)+'%';$('micMsg').textContent='Done. Room '+q.toFixed(0)+' dB, voice '+l.toFixed(0)+' dB. You can continue.';
+    btn.textContent='Repeat';btn.disabled=false;setTimeout(()=>{if(cur==='mic')go('home')},1500);
+  }catch(e){btn.disabled=false;showErr(micErr(e))}
+};
+const micErr=e=>e&&e.name==='NotAllowedError'?'Microphone access was blocked. Allow the microphone for this site in the browser settings.':(e&&e.message)||'Microphone error.';
+
+// ---------- Подбор стимула ----------
+let T=null;
+function startTest(){
+  const rest=TEST_ORDER.slice();for(let i=rest.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[rest[i],rest[j]]=[rest[j],rest[i]]}
+  T={order:rest,i:0,results:[],started:new Date().toISOString()};go('test');testIntro();
+}
+const steps=()=>$('testSteps').innerHTML=T.order.map((_,k)=>`<i class="${k<T.i?'done':k===T.i?'now':''}"></i>`).join('');
+function testIntro(){steps();$('testBody').innerHTML=`<h2>Find my stimulus</h2>
+  <p class="mut">You will read 5 short texts aloud, each with a different sound or cue. The order is random. After each one, rate how it felt. It takes about 10 minutes.</p>
+  <div class="card"><p>• Quiet room, headphones on (wired is best).</p><p>• Read at your normal pace. Stuttering is fine: that is what we measure.</p><p>• Your voice is recorded for the pilot team only.</p></div>
+  <button id="tGo">Start</button><button class="sec" id="tCancel">Cancel</button>`;
+  $('tGo').onclick=testTrial;$('tCancel').onclick=()=>go('home')}
+function testTrial(){
+  steps();const st=T.order[T.i],v=STIM[st].variants[0],txt=TEXTS[S.lang][T.i%5];
+  $('testBody').innerHTML=`<p class="mut small">Reading ${T.i+1} of ${T.order.length}</p><h2>${stimLabel(st,v)}</h2>
+  <p class="passage">${txt}</p><div class="meter"><i id="tBar"></i><u style="left:${lvl(S.thr)}%"></u></div>
+  <button id="tRec">Start reading</button>`;
+  let on=false;
+  $('tRec').onclick=async()=>{const b=$('tRec');
+    if(!on){try{b.disabled=true;await startAudio({stim:st,variant:v,record:true,onTick:db=>{const x=$('tBar');x&&(x.style.width=lvl(db)+'%')}});on=true;b.disabled=false;b.textContent='I finished reading';b.classList.add('warn')}catch(e){b.disabled=false;showErr(micErr(e))}}
+    else{b.disabled=true;const r=await stopAudio();testRate(st,v,r)}};
+}
+function testRate(st,v,r){
+  $('testBody').innerHTML=`<h2>${STIM[st].name}</h2><div class="card">
+  <p>How smooth did your speech feel? <span class="mut small">1 = very hard, 5 = very smooth</span></p><div class="scale" id="tFl"></div>
+  <p>How distracting was it? <span class="mut small">1 = not at all, 5 = very</span></p><div class="scale" id="tDi"></div>
+  <button id="tNext" disabled>${T.i<T.order.length-1?'Next reading':'See my results'}</button></div>`;
+  const ok=()=>$('tNext').disabled=!($('tFl').dataset.val&&$('tDi').dataset.val);
+  scale($('tFl'),5,1,ok);scale($('tDi'),5,1,ok);
+  $('tNext').onclick=async()=>{
+    const id=`${S.pid||'P'}_${Date.now()}_test_${st}`;
+    if(r.blob)await recPut({id,name:`${id}.${extOf(r.blob)}`,blob:r.blob,created:new Date().toISOString()});
+    const row={type:'test',id,at:new Date().toISOString(),stim:st,variant:v,passage:T.i%5+1,lang:S.lang,dur:+r.dur.toFixed(1),speak:+r.speak.toFixed(1),utt:r.utt,pauses:r.pauses,ppm:r.ppm,cues:r.cues,fluency:+$('tFl').dataset.val,distract:+$('tDi').dataset.val};
+    T.results.push(row);S.logs.push(row);save();T.i++;T.i<T.order.length?testTrial():testResults()};
+}
+function testResults(){
+  steps();const base=T.results.find(x=>x.stim==='none');
+  const sc=x=>x.fluency-0.3*(x.distract-1)+(base&&base.ppm&&x.ppm!=null?Math.max(-1,Math.min(1,(base.ppm-x.ppm)/base.ppm)):0);
+  const cand=T.results.filter(x=>x.stim!=='none').sort((a,b)=>sc(b)-sc(a));const best=cand[0];
+  $('testBody').innerHTML=`<h2>Your results</h2>
+  <p class="mut">Recommended: <b>${STIM[best.stim].name}</b> — the best balance of smoothness, distraction and long pauses among the stimuli. You can pick another one.</p>
+  ${base&&sc(base)>sc(best)?'<p class="note">Reading without any stimulus felt best this time. That is useful data too: the pilot team will compare it with your recordings.</p>':''}
+  <div class="card" style="padding:12px"><table><thead><tr><th>Stimulus</th><th class="n">Smooth</th><th class="n">Distract</th><th class="n">Pauses/min</th></tr></thead><tbody>
+  ${[base,...cand].filter(Boolean).map(x=>`<tr class="${x===best?'best':''}" data-s="${x.stim}"><td>${STIM[x.stim].short}</td><td class="n">${x.fluency}/5</td><td class="n">${x.distract}/5</td><td class="n">${x.ppm??'—'}</td></tr>`).join('')}
+  </tbody></table></div>
+  <label>Use this stimulus<select id="tPick">${cand.map(x=>`<option value="${x.stim}">${STIM[x.stim].name}</option>`).join('')}</select></label>
+  <p class="note">Long pauses are an automatic estimate. The pilot team counts stuttered syllables from your recordings for the final result.</p>
+  <button id="tSave">Save and finish</button>`;
+  $('tSave').onclick=()=>{S.stim=$('tPick').value;S.test={done:true,at:T.started,ranking:cand.map(x=>x.stim)};save();go('home')};
+}
+
+// ---------- Сессия ----------
+const preReady=()=>$('sessGo').disabled=!($('anxBefore').dataset.val!==''&&$('anxBefore').dataset.val!==undefined&&$('hpIn').checked);
+$('hpIn').onchange=preReady;
+let SESS=null,liveT=null;
+$('sessGo').onclick=async()=>{
+  const st=S.stim,v=varOf(st);$('sessGo').disabled=true;
+  try{
+    await startAudio({stim:st,variant:v,record:S.recSessions,cue:S.cue,onTick:db=>{
+      const sc=0.75+Math.max(0,Math.min(1,(db-S.thr+10)/30))*0.6;$('core').style.transform=`scale(${sc.toFixed(3)})`;
+      const p=E.vad.inUtt&&E.vad.silence>=S.pauseMs;$('ring').classList.toggle('pause',p);
+      $('ringLbl').textContent=p?'Long pause':E.vad.speaking?'You are speaking':'Listening'}});
+    SESS={st,v,sit:$('sitIn').value,anxB:+$('anxBefore').dataset.val,dnd:$('dndIn').checked,at:new Date().toISOString()};
+    try{SESS.lock=await navigator.wakeLock?.request('screen')}catch(e){}
+    $('liveStim').textContent=stimLabel(st,v);
+    $('liveNote').textContent=E.cueOn&&!canVibrate?'This phone cannot vibrate from a web page (iPhone). Sound still works.':'Sound plays only while you speak. On a long pause your phone taps a rhythm.';
+    go('live');liveT=setInterval(()=>{const m=E.m;$('liveTime').textContent=fmt((performance.now()-m.t0)/1000);$('sSpeak').textContent=fmt(m.speakMs/1000);$('sPause').textContent=m.pauses;$('sCue').textContent=m.cues},250);
+  }catch(e){showErr(micErr(e));preReady()}
+};
+$('sessStop').onclick=async()=>{
+  clearInterval(liveT);const r=await stopAudio();try{SESS.lock?.release()}catch(e){}
+  SESS.r=r;go('post');
+  $('postSum').innerHTML=`<div class="stats" style="margin:0"><div class="stat"><b>${fmt(r.dur)}</b><span>session</span></div><div class="stat"><b>${fmt(r.speak)}</b><span>speaking</span></div><div class="stat"><b>${r.pauses}</b><span>long pauses</span></div></div><p class="small mut">${stimLabel(SESS.st,SESS.v)} · ${r.cues} rhythm cues</p>`;
+};
+$('postSave').onclick=async()=>{
+  const r=SESS.r,id=`${S.pid||'P'}_${Date.now()}_session_${SESS.st}`;
+  if(r.blob)await recPut({id,name:`${id}.${extOf(r.blob)}`,blob:r.blob,created:new Date().toISOString()});
+  S.logs.push({type:'session',id,at:SESS.at,stim:SESS.st,variant:SESS.v,situation:SESS.sit,dnd:SESS.dnd,dur:+r.dur.toFixed(1),speak:+r.speak.toFixed(1),utt:r.utt,pauses:r.pauses,ppm:r.ppm,cues:r.cues,
+    fluency:+($('flPost').dataset.val||0)||null,anxBefore:SESS.anxB,anxAfter:$('anxAfter').dataset.val===''?null:+$('anxAfter').dataset.val,note:$('noteIn').value.trim()});
+  S.varCount[SESS.st]=(S.varCount[SESS.st]||0)+1;save();SESS=null;go('home');
+};
+
+// ---------- История и экспорт ----------
+async function renderHistory(){
+  const L=S.logs.slice().reverse();
+  $('histList').innerHTML=L.length?L.map(l=>`<div><span>${new Date(l.at).toLocaleDateString()} · ${l.type==='test'?'Test':l.situation||'Session'}<br><span class="mut small">${STIM[l.stim].name}${l.type==='session'&&l.anxBefore!=null?` · anxiety ${l.anxBefore}→${l.anxAfter??'—'}`:''}</span></span><span class="n" style="text-align:right">${fmt(l.speak)}<br><span class="mut small">${l.pauses} pauses</span></span></div>`).join(''):'<p class="mut">No sessions yet.</p>';
+  const recs=await recAll();$('recCount').textContent=recs.length+' recording'+(recs.length===1?'':'s')+' on this phone';$('expRec').disabled=!recs.length;
+}
+const dl=(blob,name)=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000)};
+$('expCsv').onclick=()=>{
+  const cols=['participant','type','id','at','stim','variant','situation','passage','lang','dur','speak','utt','pauses','ppm','cues','fluency','distract','anxBefore','anxAfter','dnd','note'];
+  const esc=v=>v==null?'':/[",\n]/.test(String(v))?`"${String(v).replace(/"/g,'""')}"`:String(v);
+  const csv=[cols.join(','),...S.logs.map(l=>cols.map(c=>esc(c==='participant'?S.pid:l[c])).join(','))].join('\n');
+  dl(new Blob(['﻿'+csv],{type:'text/csv'}),`safenode_${S.pid||'P'}_${new Date().toISOString().slice(0,10)}.csv`)};
+$('expRec').onclick=async()=>{
+  const recs=await recAll();if(!recs.length)return;$('expRec').disabled=true;$('recCount').textContent='Preparing…';
+  try{if(!window.JSZip)await new Promise((r,j)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';s.onload=r;s.onerror=j;document.head.appendChild(s)});
+    const z=new JSZip();recs.forEach(x=>z.file(x.name,x.blob));dl(await z.generateAsync({type:'blob'}),`safenode_${S.pid||'P'}_recordings.zip`)}
+  catch(e){recs.forEach((x,i)=>setTimeout(()=>dl(x.blob,x.name),i*600))}
+  renderHistory()};
+
+// ---------- Настройки ----------
+$('setPid').oninput=e=>{S.pid=e.target.value.trim();save()};
+$('setLang').onchange=e=>{S.lang=e.target.value;save()};
+$('setVol').oninput=e=>{S.vol=+e.target.value;$('volV').textContent=S.vol+'%';save()};
+$('setPause').oninput=e=>{S.pauseMs=+e.target.value;$('pauseV').textContent=(S.pauseMs/1000).toFixed(1)+' s';save()};
+$('setCue').onchange=e=>{S.cue=e.target.checked;save()};
+$('setRot').onchange=e=>{S.rot=e.target.checked;save()};
+$('setRecS').onchange=e=>{S.recSessions=e.target.checked;save()};
+$('setStim').onchange=e=>{S.stim=e.target.value||null;save()};
+let wipeArm=false;
+$('wipe').onclick=async()=>{if(!wipeArm){wipeArm=true;$('wipe').textContent='Tap again to delete everything';$('wipe').classList.add('warn');setTimeout(()=>{wipeArm=false;$('wipe').textContent='Delete all my data';$('wipe').classList.remove('warn')},4000);return}
+  await recClear();try{localStorage.removeItem('safenode')}catch(e){}S={...DEF,logs:[],varCount:{}};go('welcome')};
+
+go(S.consent?'home':'welcome');
+}
+</script>
+</body>
+</html>
